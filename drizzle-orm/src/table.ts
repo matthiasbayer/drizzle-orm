@@ -1,8 +1,9 @@
 import type { Column, GetColumnData } from './column.ts';
 import { entityKind } from './entity.ts';
 import type { OptionalKeyOnly, RequiredKeyOnly } from './operations.ts';
+import type { PgInsertConfig } from './pg-core/index.ts';
 import type { SQLWrapper } from './sql/sql.ts';
-import type { Simplify, Update } from './utils.ts';
+import type { Simplify, Update, UpdateSet } from './utils.ts';
 
 export interface TableConfig<TColumn extends Column = Column<any>> {
 	name: string;
@@ -36,6 +37,9 @@ export const IsAlias = Symbol.for('drizzle:IsAlias');
 /** @internal */
 export const ExtraConfigBuilder = Symbol.for('drizzle:ExtraConfigBuilder');
 
+/** @internal */
+export const Middleware = Symbol.for("drizzle:Middleware");
+
 const IsDrizzleTable = Symbol.for('drizzle:IsDrizzleTable');
 
 export interface Table<
@@ -43,6 +47,14 @@ export interface Table<
 	T extends TableConfig = TableConfig,
 > extends SQLWrapper {
 	// SQLWrapper runtime implementation is defined in 'sql/sql.ts'
+}
+
+interface MiddlewareConfig<T extends TableConfig = TableConfig> {
+  beforeInsert: (
+    table: Table<T>,
+    insertedFields: Partial<PgInsertConfig>
+  ) => void;
+  beforeUpdate: (table: Table<T>, updatedFields: UpdateSet) => void;
 }
 
 export class Table<T extends TableConfig = TableConfig> implements SQLWrapper {
@@ -70,6 +82,7 @@ export class Table<T extends TableConfig = TableConfig> implements SQLWrapper {
 		BaseName: BaseName as typeof BaseName,
 		IsAlias: IsAlias as typeof IsAlias,
 		ExtraConfigBuilder: ExtraConfigBuilder as typeof ExtraConfigBuilder,
+    Middleware: Middleware as typeof Middleware,
 	};
 
 	/**
@@ -104,11 +117,17 @@ export class Table<T extends TableConfig = TableConfig> implements SQLWrapper {
 
 	[IsDrizzleTable] = true;
 
+  [Middleware]?: MiddlewareConfig;
+
 	constructor(name: string, schema: string | undefined, baseName: string) {
 		this[TableName] = this[OriginalName] = name;
 		this[Schema] = schema;
 		this[BaseName] = baseName;
 	}
+
+  $use(middleware: MiddlewareConfig): void {
+    this[Middleware] = middleware;
+  }
 }
 
 export function isTable(table: unknown): table is Table {

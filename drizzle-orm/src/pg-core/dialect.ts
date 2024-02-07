@@ -105,8 +105,8 @@ export class PgDialect {
 		table[Table.Symbol.Middleware]?.beforeUpdate(table, set);
 		
 		const setEntries = Object.entries(set);
+
 		const setSize = setEntries.length;
-		
 		return sql.join(
 			setEntries
 				.flatMap(([colName, value], i): SQL[] => {

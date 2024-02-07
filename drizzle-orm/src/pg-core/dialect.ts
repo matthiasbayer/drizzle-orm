@@ -101,10 +101,12 @@ export class PgDialect {
 		return sql`delete from ${table}${whereSql}${returningSql}`;
 	}
 
-	buildUpdateSet(table: PgTable, set: UpdateSet): SQL {
+	buildUpdateSet(table: PgTable, set: UpdateSet): SQL {		
+		table[Table.Symbol.Middleware]?.beforeUpdate(table, set);
+		
 		const setEntries = Object.entries(set);
-
 		const setSize = setEntries.length;
+		
 		return sql.join(
 			setEntries
 				.flatMap(([colName, value], i): SQL[] => {
